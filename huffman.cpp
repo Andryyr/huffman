@@ -36,10 +36,6 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
     {
         fin.read(&c, sizeof(char));
         freq[c]++;
-        /*if (freq.find(c) != freq.end())
-            freq[c]++;
-        else
-            freq[c] = 1;*/
     }
     fin.seekg(fin.beg);
     char buffer[buf_size];
@@ -147,8 +143,6 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
             break;
         for(size_t i = 0; i < symb_count - 1; i++)
         {
-            /*if (!decode_symb(root, buffer[i], numb_of_bits, fout))
-                return false;*/
             for(size_t j = 0; j < numb_of_bits; j++)
             {
                 node = (buffer[i] >> j) & 1 ? node->right : node->left;
@@ -164,8 +158,6 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
 
         if (!fin)
             numb_of_bits = numb_of_bits - fake_zero;
-        /*if (!decode_symb(root, buffer[numb_of_symb - 1], numb_of_bits, fout))
-            return false;*/
         for(size_t j = 0; j < numb_of_bits; j++)
         {
             node = (buffer[symb_count - 1] >> j) & 1 ? node->right : node->left;
