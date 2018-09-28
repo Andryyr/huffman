@@ -17,8 +17,6 @@ public:
 private:
     struct Node;
 
-    static bool decode_symb(Node* root, char symb, char bits_counter, std::ostream &fout);
-
     static void gen_codes(Node* v, std::map<char, std::vector<bool>>& codes, std::vector<bool>& curr_code);
 
     static Node* build_tree(std::map<char, uint64_t>& freq);

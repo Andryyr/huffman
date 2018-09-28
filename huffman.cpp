@@ -89,23 +89,6 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
     fout.write(&bits_counter, sizeof(bits_counter));
 }
 
-bool huffman::decode_symb(huffman::Node *root, char symb, char bits_counter, std::ostream &fout) {
-    Node* node = root;
-    bool bit;
-    for(size_t i = 0; i < bits_counter; i++)
-    {
-        bit = static_cast<bool>(1 & (symb >> i));
-        node = bit ? node->right : node->left;
-        if (!node)
-            return false;
-        if (node->single)
-        {
-            fout.write(&(node->symb), sizeof(node->symb));
-        }
-    }
-    return false;
-}
-
 bool huffman::decode(std::istream &fin, std::ostream &fout)
 {
     char fake_zero;
