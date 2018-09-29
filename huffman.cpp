@@ -30,14 +30,25 @@ struct huffman::Node
 
 void huffman::encode(std::istream &fin, std::ostream &fout)
 {
-    std::map<char, uint64_t> freq;
+    std::array<uint64_t, 256> freq_array = {};
+
     char c;
-    freq['a'] = freq['b'] = 0;
     while(fin.peek() != std::ifstream::traits_type::eof())
     {
         fin.read(&c, sizeof(char));
-        freq[c]++;
+        freq_array[static_cast<unsigned char>(c)]++;
     }
+
+    std::map<char, uint64_t> freq;
+    freq['a'] = freq['b'] = 0;
+
+    for (uint32_t i = 0; i != 256; ++i)
+    {
+        uint64_t fr = freq_array[static_cast<unsigned char>(i)];
+        if (fr != 0)
+            freq[i] = fr;
+    }
+
     fin.seekg(fin.beg);
     char buffer[buf_size];
     fout.write(&buffer[0], sizeof(char));
@@ -52,7 +63,7 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
         fout.write(reinterpret_cast<const char *>(&count), sizeof(count));
     }
 
-    std::map<char, std::vector<bool>> codes;
+    std::array<std::vector<bool>, 256> codes;
     std::vector<bool> curr_code;
     {
         std::unique_ptr<Node> root = build_tree(freq);
@@ -162,11 +173,11 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
     return true;
 }
 
-void huffman::gen_codes(huffman::Node& v, std::map<char, std::vector<bool>>& codes, std::vector<bool>& curr_code)
+void huffman::gen_codes(huffman::Node& v, std::array<std::vector<bool>, 256>& codes, std::vector<bool>& curr_code)
 {
     if (v.single)
     {
-        codes[v.symb] = std::vector<bool>(curr_code);
+        codes[static_cast<unsigned char>(v.symb)] = curr_code;
         curr_code.pop_back();
         return;
     }
