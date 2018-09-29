@@ -80,7 +80,7 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
         auto numb_of_symbs = size_t(fin.gcount());
         for(size_t i = 0; i < numb_of_symbs; i++)
         {
-            std::vector<bool> symb_code = codes[buffer[i]];
+            std::vector<bool> const& symb_code = codes[static_cast<unsigned char>(buffer[i])];
             for (const auto next : symb_code)
             {
                 actual_code |= (next << bits_counter++);
