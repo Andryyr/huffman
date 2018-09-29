@@ -87,6 +87,8 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
     }
     fout.seekp(0);
     fout.write(&bits_counter, sizeof(bits_counter));
+
+    delete_tree(root);
 }
 
 bool huffman::decode(std::istream &fin, std::ostream &fout)
@@ -130,7 +132,10 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
             {
                 node = (buffer[i] >> j) & 1 ? node->right : node->left;
                 if (!node)
+                {
+                    delete_tree(root);
                     return false;
+                }
                 if (node->single)
                 {
                     fout.write(&node->symb, sizeof(char));
@@ -145,7 +150,10 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
         {
             node = (buffer[symb_count - 1] >> j) & 1 ? node->right : node->left;
             if (!node)
+            {
+                delete_tree(root);
                 return false;
+            }
             if (node->single)
             {
                 fout.write(&node->symb, sizeof(char));
@@ -154,6 +162,7 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
         }
     }
 
+    delete_tree(root);
     return true;
 }
 
@@ -200,3 +209,17 @@ huffman::Node *huffman::build_tree(std::map<char, uint64_t> &freq)
     }
     return *nodes.begin();
 }
+
+void huffman::delete_tree(huffman::Node *v)
+{
+    if (v->left)
+    {
+        delete_tree(v->left);
+    }
+    if (v->right)
+    {
+        delete_tree(v->right);
+    }
+    delete v;
+}
+
