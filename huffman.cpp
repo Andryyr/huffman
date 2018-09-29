@@ -4,7 +4,7 @@
 
 #include <fstream>
 #include <set>
-#include <unordered_set>
+#include <unordered_map>
 #include "huffman.h"
 
 struct huffman::Node
@@ -12,31 +12,43 @@ struct huffman::Node
     char symb;
     uint64_t weight;
     bool single;
-    Node* left;
-    Node* right;
+    std::unique_ptr<Node> left;
+    std::unique_ptr<Node> right;
 
     Node(char symb,
             uint64_t weight,
             bool single = true,
-            Node* left = nullptr,
-            Node* right = nullptr):
+            std::unique_ptr<Node> left = nullptr,
+            std::unique_ptr<Node> right = nullptr):
             symb(symb),
             weight(weight),
             single(single),
-            left(left),
-            right(right) {}
+            left(std::move(left)),
+            right(std::move(right))
+    {}
 };
 
 void huffman::encode(std::istream &fin, std::ostream &fout)
 {
-    std::map<char, uint64_t> freq;
+    std::array<uint64_t, 256> freq_array = {};
+
     char c;
-    freq['a'] = freq['b'] = 0;
     while(fin.peek() != std::ifstream::traits_type::eof())
     {
         fin.read(&c, sizeof(char));
-        freq[c]++;
+        freq_array[static_cast<unsigned char>(c)]++;
     }
+
+    std::map<char, uint64_t> freq;
+    freq['a'] = freq['b'] = 0;
+
+    for (uint32_t i = 0; i != 256; ++i)
+    {
+        uint64_t fr = freq_array[static_cast<unsigned char>(i)];
+        if (fr != 0)
+            freq[i] = fr;
+    }
+
     fin.seekg(fin.beg);
     char buffer[buf_size];
     fout.write(&buffer[0], sizeof(char));
@@ -51,10 +63,12 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
         fout.write(reinterpret_cast<const char *>(&count), sizeof(count));
     }
 
-    Node* root = build_tree(freq);
-    std::map<char, std::vector<bool>> codes;
+    std::array<std::vector<bool>, 256> codes;
     std::vector<bool> curr_code;
-    gen_codes(root, codes, curr_code);
+    {
+        std::unique_ptr<Node> root = build_tree(freq);
+        gen_codes(*root, codes, curr_code);
+    }
 
     char actual_code = 0;
     char bits_counter = 0;
@@ -66,7 +80,7 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
         auto numb_of_symbs = size_t(fin.gcount());
         for(size_t i = 0; i < numb_of_symbs; i++)
         {
-            std::vector<bool> symb_code = codes[buffer[i]];
+            std::vector<bool> const& symb_code = codes[static_cast<unsigned char>(buffer[i])];
             for (const auto next : symb_code)
             {
                 actual_code |= (next << bits_counter++);
@@ -87,8 +101,6 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
     }
     fout.seekp(0);
     fout.write(&bits_counter, sizeof(bits_counter));
-
-    delete_tree(root);
 }
 
 bool huffman::decode(std::istream &fin, std::ostream &fout)
@@ -114,11 +126,11 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
         freq[key] = count;
     }
 
-    Node* root = build_tree(freq);
+    std::unique_ptr<Node> root = build_tree(freq);
 
     char buffer[buf_size];
     char numb_of_bits = 8;
-    Node* node = root;
+    Node* node = root.get();
 
     while(fin)
     {
@@ -130,16 +142,14 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
         {
             for(size_t j = 0; j < size_t(numb_of_bits); j++)
             {
-                node = (buffer[i] >> j) & 1 ? node->right : node->left;
+                node = (buffer[i] >> j) & 1 ? node->right.get() : node->left.get();
                 if (!node)
-                {
-                    delete_tree(root);
                     return false;
-                }
+
                 if (node->single)
                 {
                     fout.write(&node->symb, sizeof(char));
-                    node = root;
+                    node = root.get();
                 }
             }
         }
@@ -148,78 +158,56 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
             numb_of_bits = numb_of_bits - fake_zero;
         for(size_t j = 0; j < size_t(numb_of_bits); j++)
         {
-            node = (buffer[symb_count - 1] >> j) & 1 ? node->right : node->left;
+            node = (buffer[symb_count - 1] >> j) & 1 ? node->right.get() : node->left.get();
             if (!node)
-            {
-                delete_tree(root);
                 return false;
-            }
+
             if (node->single)
             {
                 fout.write(&node->symb, sizeof(char));
-                node = root;
+                node = root.get();
             }
         }
     }
 
-    delete_tree(root);
     return true;
 }
 
-void huffman::gen_codes(huffman::Node* v, std::map<char, std::vector<bool>>& codes, std::vector<bool>& curr_code)
+void huffman::gen_codes(huffman::Node& v, std::array<std::vector<bool>, 256>& codes, std::vector<bool>& curr_code)
 {
-    if (v->single)
+    if (v.single)
     {
-        codes[v->symb] = std::vector<bool>(curr_code);
+        codes[static_cast<unsigned char>(v.symb)] = curr_code;
         curr_code.pop_back();
         return;
     }
 
     curr_code.push_back(false);
-    gen_codes(v->left, codes, curr_code);
+    gen_codes(*v.left, codes, curr_code);
     curr_code.push_back(true);
-    gen_codes(v->right, codes, curr_code);
+    gen_codes(*v.right, codes, curr_code);
 
     if (!curr_code.empty())
         curr_code.pop_back();
 }
 
-huffman::Node *huffman::build_tree(std::map<char, uint64_t> &freq)
+std::unique_ptr<huffman::Node> huffman::build_tree(std::map<char, uint64_t> &freq)
 {
-    auto cmp = [](const auto& lhs, const auto& rhs)
-    {
-        /*if (lhs->weight == rhs->weight)
-            return true;*/
-        return lhs->weight < rhs->weight;
-    };
-    std::multiset<Node*, decltype(cmp)>nodes(cmp);
+    std::multimap<uint64_t, std::unique_ptr<Node>> nodes;
     for(auto& i : freq)
     {
-        nodes.insert(new Node(i.first, i.second));
+        nodes.insert({i.second, std::make_unique<Node>(i.first, i.second)});
     }
 
     while(nodes.size() > 1)
     {
-        Node* a = *nodes.begin();
+        std::unique_ptr<Node> a = std::move(nodes.begin()->second);
         nodes.erase(nodes.begin());
-        Node* b = *nodes.begin();
+        std::unique_ptr<Node> b = std::move(nodes.begin()->second);
         nodes.erase(nodes.begin());
 
-        nodes.insert(new Node('0', a->weight + b->weight, false, a, b));
+        uint64_t w = a->weight + b->weight;
+        nodes.insert({w, std::make_unique<Node>('0', w, false, std::move(a), std::move(b))});
     }
-    return *nodes.begin();
+    return std::move(nodes.begin()->second);
 }
-
-void huffman::delete_tree(huffman::Node *v)
-{
-    if (v->left)
-    {
-        delete_tree(v->left);
-    }
-    if (v->right)
-    {
-        delete_tree(v->right);
-    }
-    delete v;
-}
-

@@ -5,9 +5,11 @@
 #ifndef HUFFMAN_V2_HUFFMAN_H
 #define HUFFMAN_V2_HUFFMAN_H
 
+#include <array>
 #include <vector>
 #include <iostream>
 #include <map>
+#include <memory>
 
 class huffman {
 public:
@@ -17,11 +19,9 @@ public:
 private:
     struct Node;
 
-    static void gen_codes(Node* v, std::map<char, std::vector<bool>>& codes, std::vector<bool>& curr_code);
+    static void gen_codes(Node& v, std::array<std::vector<bool>, 256>& codes, std::vector<bool>& curr_code);
 
-    static Node* build_tree(std::map<char, uint64_t>& freq);
-
-    static void delete_tree(Node* root);
+    static std::unique_ptr<Node> build_tree(std::map<char, uint64_t>& freq);
 
     static const uint32_t buf_size = 1024 * 1024;
 };
