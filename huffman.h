@@ -21,6 +21,8 @@ private:
 
     static Node* build_tree(std::map<char, uint64_t>& freq);
 
+    static void delete_tree(Node* root);
+
     static const uint32_t buf_size = 1024 * 1024;
 };
 
