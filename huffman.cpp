@@ -126,7 +126,7 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
             break;
         for(size_t i = 0; i < symb_count - 1; i++)
         {
-            for(size_t j = 0; j < numb_of_bits; j++)
+            for(size_t j = 0; j < size_t(numb_of_bits); j++)
             {
                 node = (buffer[i] >> j) & 1 ? node->right : node->left;
                 if (!node)
@@ -141,7 +141,7 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
 
         if (!fin)
             numb_of_bits = numb_of_bits - fake_zero;
-        for(size_t j = 0; j < numb_of_bits; j++)
+        for(size_t j = 0; j < size_t(numb_of_bits); j++)
         {
             node = (buffer[symb_count - 1] >> j) & 1 ? node->right : node->left;
             if (!node)
@@ -179,11 +179,11 @@ huffman::Node *huffman::build_tree(std::map<char, uint64_t> &freq)
 {
     auto cmp = [](const auto& lhs, const auto& rhs)
     {
-        if (lhs->weight == rhs->weight)
-            return true;
+        /*if (lhs->weight == rhs->weight)
+            return true;*/
         return lhs->weight < rhs->weight;
     };
-    std::set<Node*, decltype(cmp)>nodes(cmp);
+    std::multiset<Node*, decltype(cmp)>nodes(cmp);
     for(auto& i : freq)
     {
         nodes.insert(new Node(i.first, i.second));
