@@ -2,7 +2,7 @@
 #include "huffman.h"
 
 void help() {
-    std::cout << "usage: ./huffman (-e | -d) source target" << std::endl;
+    std::cout << "Please write: (-e | -d) source target" << std::endl;
     exit(0);
 }
 
