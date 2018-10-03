@@ -23,7 +23,7 @@ private:
 
     static std::unique_ptr<Node> build_tree(std::map<char, uint64_t>& freq);
 
-    static const uint32_t buf_size = 1024 * 1024;
+    static const uint32_t buf_size = 1024 * 512;
 };
 
 
