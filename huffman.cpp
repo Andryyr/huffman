@@ -64,8 +64,7 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
     }
 
 
-
-    uint16_t numb_of_symb = static_cast<uint16_t >(freq.size());
+    auto numb_of_symb = static_cast<uint16_t >(freq.size());
     fout.write(reinterpret_cast<const char *>(&numb_of_symb), sizeof(numb_of_symb));
 //    size_t t = 0;
     for (const auto i: freq)
@@ -90,11 +89,14 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
 
     fin.clear();
     fin.seekg(0, std::ios::beg);
+
+    char buffer_out[buf_size];
+    size_t numb_of_codes = 0;
+
     while(fin)
     {
         fin.read(buffer, buf_size * sizeof(char));
         auto numb_of_symbs = size_t(fin.gcount());
-        size_t numb_of_codes = 0;
         for(size_t i = 0; i < numb_of_symbs; i++)
         {
             std::vector<bool> const& symb_code = codes[static_cast<unsigned char>(buffer[i])];
@@ -104,13 +106,18 @@ void huffman::encode(std::istream &fin, std::ostream &fout)
                 if (bits_counter == numb_of_bits)
                 {
                     //fout.write(&actual_code, sizeof(actual_code));
-                    buffer[numb_of_codes++] = actual_code;
+                    buffer_out[numb_of_codes++] = actual_code;
+                    if (numb_of_codes == buf_size)
+                    {
+                        fout.write(buffer_out, numb_of_codes * sizeof(char));
+                        numb_of_codes = 0;
+                    }
                     actual_code = 0;
                     bits_counter = 0;
                 }
             }
         }
-        fout.write(buffer, numb_of_codes * sizeof(char));
+        fout.write(buffer_out, numb_of_codes * sizeof(char));
     }
 
     if (bits_counter)
@@ -156,6 +163,7 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
 
     while(fin)
     {
+        ready_chars = 0;
         fin.read(buffer, buf_size * sizeof(char));
         auto symb_count = size_t(fin.gcount());
         if (symb_count == 0)
@@ -170,24 +178,24 @@ bool huffman::decode(std::istream &fin, std::ostream &fout)
 
                 if (node->single)
                 {
-                    fout.write(&node->symb, sizeof(char));
+                    //fout.write(&node->symb, sizeof(char));
                     //buffer_out.push_back(node->symb);
-                    buffer_out[ready_chars] = node->symb;
-                    ready_chars++;
+                    buffer_out[ready_chars++] = node->symb;
                     if (ready_chars == buf_size)
                     {
                         ready_chars = 0;
                         /*fout.write((char *) buffer_out.data(), buf_size * sizeof(char));
                         buffer_out.resize(0);*/
-                        //fout.write(buffer_out, buf_size * sizeof(char));
+                        fout.write(buffer_out, buf_size * sizeof(char));
                     }
                     node = root.get();
                 }
             }
         }
-        /*if (ready_chars > 0)
-            //fout.write((char *) buffer_out.data(), ready_chars * sizeof(char));
-            fout.write(buffer_out, ready_chars * sizeof(char));*/
+        //
+        //if (ready_chars > 0)
+        //fout.write((char *) buffer_out.data(), ready_chars * sizeof(char));
+        fout.write(buffer_out, ready_chars * sizeof(char));
         if (!fin)
             numb_of_bits = numb_of_bits - fake_zero;
         for(size_t j = 0; j < size_t(numb_of_bits); j++)

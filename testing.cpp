@@ -56,7 +56,7 @@ TEST(correctness, rand_big) {
 
     huffman::encode(in, c);
     huffman::decode(c, d);
-
+    //EXPECT_EQ(true,true);
     EXPECT_EQ(in.str(), d.str());
 }
 
